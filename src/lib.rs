@@ -1,6 +1,7 @@
 use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
+use std::io::Read;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -14,12 +15,15 @@ pub struct Config {
     output: PathBuf,
 
     /// Message to hide
-    #[structopt(short, long)]
-    message: String,
+    #[structopt(
+        short = "-f", 
+        long = "--input-file",
+        parse(from_os_str))]
+    input_file: PathBuf,
 
     /// Input file to process
     #[structopt(name = "FILE", parse(from_os_str))]
-    input: PathBuf,
+    secret: PathBuf,
 }
 
 /*
@@ -31,11 +35,18 @@ pub struct Config {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     
     // Reading message from config and converting it into bits
-    let bin_bytes = bin_bytes(config.message.as_bytes());
+    let mut input_file = File::open(&config.input_file)
+        .expect(format!("No file {:?} found", config.input_file).as_str());
 
+    let mut message: Vec<u8> = Vec::new();
+    
+    input_file.read_to_end(&mut message).unwrap();
+    
+    let bin_bytes = bin_bytes(&message);
+    
     // Creating the decoder and reader objects 
     // to read input image data
-    let decoder = Decoder::new(File::open(&config.input).unwrap());
+    let decoder = Decoder::new(File::open(&config.secret).unwrap());
     let mut reader = decoder.read_info().unwrap();
 
     // Creating the input image data buffer
