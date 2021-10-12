@@ -26,5 +26,5 @@ ARGS:
 
 ## Example:
 ```
-lsbruh hello.png -m "Hello There!" -o general_kenobi.png
+lsbruh hello.png -f there.txt -o general_kenobi.png
 ```
