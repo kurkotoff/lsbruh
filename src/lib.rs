@@ -1,96 +1,103 @@
+use structopt::StructOpt;
+use std::path::PathBuf;
 use std::error::Error;
 use std::fs::File;
 use std::io::BufWriter;
-use std::path::Path;
-use std::env;
+
 
 use png::Decoder;
 use png::Encoder;
 
+#[derive(StructOpt, Debug)]
 pub struct Config {
-    mode: String,
+
+    /// Output file
+    #[structopt(
+        short, 
+        long, 
+        parse(from_os_str))]
+    output: PathBuf,
+
+    /// Message to hide
+    #[structopt(
+        short, 
+        long )]
     message: String,
-    input_file: String,
-    output_file: String,
+
+    /// Input file to process
+    #[structopt(
+        name = "FILE", 
+        parse(from_os_str))]
+    input: PathBuf,
 }
 
-impl Config {
-    pub fn new(mut args: env::Args) -> Result<Config, &'static str>{
-        args.next();
+pub fn run(config: Config) -> Result<(), Box<dyn Error>>{
+    let bin_bytes = bin_bytes(config.message.as_bytes());
 
-        let mode = match args.next() {
-            Some(arg) => arg,
-            None => return Err("Operation mode not found")
-        };
 
-        let message = if mode == "w" {
-            match args.next() {
-                Some (arg) => arg,
-                None => return Err("Message not found")
-            };
-            String::new()
-        } else {
-            String::new()
-        };
-
-        let input_file = match args.next() {
-            Some(arg) => arg,
-            None => return Err("Input filename not found")
-        };
-            
-        let output_file = if mode == "w" {
-            match args.next() {
-                Some (arg) => arg,
-                None => return Err("Message not found")
-            };
-            String::new()
-        } else {
-            String::new()
-        };
-        
-        Ok(Config {
-            mode,
-            message,
-            input_file,
-            output_file,
-        })
-    }
-}
-
-pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
-    let message = String::from("hello");
-    let message_bytes = message.as_bytes();
-
-    let decoder = Decoder::new(File::open("hello.png").unwrap());
+    let decoder = Decoder::new(File::open(&config.input).unwrap());
+    
     let mut reader = decoder.read_info().unwrap();
-        
     let mut data = vec![0; reader.output_buffer_size()];
-
-    if data.len() < message_bytes.len(){
-
-    }
-
     reader.next_frame(&mut data).unwrap();
     let info = reader.info();
 
 
-    for val in &mut data {
-        if *val % 2 != 1 {
-            *val += 1;
-        }
-    }
+    encode_lsb(&mut data, &bin_bytes);
 
-    let output_file = File::create(Path::new("square_hidden.png")).unwrap();
 
-    let ref mut w = BufWriter::new(output_file);
-    let mut encoder = Encoder::new(w, info.width, info.height);
+
+    let output_file = File::create(PathBuf::from(&config.output)).unwrap();
+
+    let mut encoder = Encoder::new(
+        BufWriter::new(output_file),
+        info.width,
+        info.height
+    );
 
     encoder.set_color(info.color_type);
     encoder.set_depth(info.bit_depth);
 
     let mut writer = encoder.write_header().unwrap();
-    
+
     writer.write_image_data(&data).unwrap();
 
     Ok(())
 }
+
+fn bin_u8(num: &u8) -> Vec<u8>{
+    let mut res: Vec<u8> = Vec::new();
+    let mut num = *num;
+
+    for _ in 0..8 {
+        res.push(num % 2);
+        num /= 2;
+    }
+
+    res.reverse();
+
+    res
+}
+
+fn bin_bytes(bytes: &[u8]) -> Vec<u8>{
+    let mut res: Vec<u8> = Vec::new();
+
+    for byte in bytes {
+        let bin = bin_u8(byte);
+        
+        for bit in bin {
+            res.push(bit);
+        }
+    }
+
+    res
+}
+
+fn encode_lsb(file_data: &mut Vec<u8>, message_bits: &Vec<u8>) {    
+    for i in 0..message_bits.len(){
+      file_data[i] >>= 1;
+      file_data[i] <<= 1;
+
+      file_data[i] |= message_bits[i];
+    };
+} 
