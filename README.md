@@ -5,7 +5,7 @@ If you want to try hiding a message inside a picture - this tool is the right to
 - [x] Hide messages in image files (.png)
 - [ ] TODO: Extract messages hidden in other files
 - [ ] TODO: Can try to bruteforce the bits that contain the hidden message if you do no know, which ones are they
-- [ ] TODO: Supports more file formats
+- [ ] TODO: Support more file formats
 
 ## Usage:
 ```
