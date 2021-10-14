@@ -1,13 +1,19 @@
+pub(crate) use structopt::StructOpt;
+
+use lsbruh::Command;
 use lsbruh::Config;
-use structopt::StructOpt;
 
 
 fn main() {
     let config = Config::from_args();
     
-    if let Err(e) = lsbruh::run(config) {
-        eprintln!("Application error: {}", e);
+    match config.cmd {
+        Command::Write(options) => {
+            lsbruh::write_data(&options);
+        }
 
-        std::process::exit(1);
+        Command::Read(options) => {
+            lsbruh::read_data(&options);
+        }
     }
 }
