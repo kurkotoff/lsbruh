@@ -3,28 +3,18 @@
 If you want to try hiding a message inside a picture - this tool is the right tool for you. Here's the functions of this tool:
 
 - [x] Hide messages in image files (.png)
-- [ ] TODO: Extract messages hidden in other files
+- [x] TODO: Extract messages hidden in other files
 - [ ] TODO: Can try to bruteforce the bits that contain the hidden message if you do no know, which ones are they
-- [ ] TODO: Support more file formats
+- [ ] TODO: Supports more file formats
 
 ## Usage:
+
+### Write a message into a file
 ```
-USAGE:
-    lsbruh <FILE> --message <message> --output <output>
-
-FLAGS:
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-OPTIONS:
-    -m, --message <message>    Message to hide
-    -o, --output <output>      Output file
-
-ARGS:
-    <FILE>    Input file to process
+lsbruh write container.png -f message.txt -o stego.png
 ```
 
-## Example:
+### Read LSB from a stego file
 ```
-lsbruh hello.png -f there.txt -o general_kenobi.png
+lsbruh read stego.png -o output.txt
 ```
