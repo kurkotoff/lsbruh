@@ -5,7 +5,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::io::BufWriter;
 
-use png::{Encoder, Decoder};
+use png::{Encoder, Decoder, Info};
 
 
 #[derive(StructOpt, Debug)]
@@ -113,6 +113,7 @@ fn encode_lsb(file_data: &mut Vec<u8>, message_bits: &Vec<u8>) {
     }
 }
 
+
 fn read_lsb(file: &mut Vec<u8>) -> Vec<u8> {
 
     let mut message = Vec::new();
@@ -145,6 +146,19 @@ fn read_lsb(file: &mut Vec<u8>) -> Vec<u8> {
     res
 }
 
+fn write_lsb(info: &Info, data: &Vec<u8>, options: &WriteOptions) {
+    let output_file = File::create(PathBuf::from(&options.output)).unwrap();  // Creating an encoder and writer objects for generating an output pic
+
+    let mut encoder = Encoder::new(
+        BufWriter::new(output_file), 
+        info.width, 
+        info.height);
+    encoder.set_color(info.color_type);
+    encoder.set_depth(info.bit_depth);
+
+    let mut writer = encoder.write_header().unwrap();
+    writer.write_image_data(&data).unwrap();  
+}
 
 pub fn write_data(options: &WriteOptions){
     let mut input_file = File::open(&options.input_file)    // Reading message from config and converting it into bits
@@ -163,18 +177,7 @@ pub fn write_data(options: &WriteOptions){
     let info = reader.info();                                                     // Pulling information about image to an object
 
     encode_lsb(&mut data, &bin_bytes);
- 
-    let output_file = File::create(PathBuf::from(&options.output)).unwrap();  // Creating an encoder and writer objects for generating an output pic
-
-    let mut encoder = Encoder::new(
-        BufWriter::new(output_file), 
-        info.width, 
-        info.height);
-    encoder.set_color(info.color_type);
-    encoder.set_depth(info.bit_depth);
-
-    let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(&data).unwrap();                                            // Writing the processed data to a new image
+    write_lsb(info, &data, options);
 }
 
 pub fn read_data(options: &ReadOptions) {
