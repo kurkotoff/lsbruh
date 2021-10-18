@@ -1,12 +1,13 @@
-use std::{path::PathBuf};
+use std::error::Error;
+use std::result::Result;
+use std::path::PathBuf;
+use image::GenericImageView;
 use structopt::StructOpt;
 
 use std::fs::File;
 use std::io::{Read, Write};
-use std::io::BufWriter;
 
-use png::{Encoder, Decoder, Info};
-
+use image::io::Reader as ImageReader;
 
 #[derive(StructOpt, Debug)]
 pub struct Config {
@@ -48,6 +49,10 @@ pub struct ReadOptions {
     #[structopt(short, long, parse(from_os_str))]
     pub output: PathBuf,
 }
+
+// pub struct LSB {
+//     config: Config
+// }
 
 // /*
 //   Converts a u8 number into an array
@@ -104,12 +109,14 @@ fn bin_bytes(bytes: &[u8]) -> Vec<u8> {
     10  => 0000101|0| => 0000101|1|
 */
 
-fn encode_lsb(file_data: &mut Vec<u8>, message_bits: &Vec<u8>) {
-    for i in 0..message_bits.len() {
+fn encode_lsb(file_data: &mut Vec<u8>, bin_message: &Vec<u8>) {
+    // dbg!(bin_message);
+
+    for i in 0..bin_message.len() {
         file_data[i] >>= 1;
         file_data[i] <<= 1;
 
-        file_data[i] |= message_bits[i];
+        file_data[i] |= bin_message[i];
     }
 }
 
@@ -146,49 +153,43 @@ fn read_lsb(file: &mut Vec<u8>) -> Vec<u8> {
     res
 }
 
-fn write_lsb(info: &Info, data: &Vec<u8>, options: &WriteOptions) {
-    let output_file = File::create(PathBuf::from(&options.output)).unwrap();  // Creating an encoder and writer objects for generating an output pic
-
-    let mut encoder = Encoder::new(
-        BufWriter::new(output_file), 
-        info.width, 
-        info.height);
-    encoder.set_color(info.color_type);
-    encoder.set_depth(info.bit_depth);
-
-    let mut writer = encoder.write_header().unwrap();
-    writer.write_image_data(&data).unwrap();  
-}
-
-pub fn write_data(options: &WriteOptions){
-    let mut input_file = File::open(&options.input_file)    // Reading message from config and converting it into bits
-        .expect(format!("No file {:?} found", options.input_file).as_str());
+pub fn write_data(options: &WriteOptions) -> Result<(), Box<dyn Error> >{
+    let img = ImageReader::open(&options.secret)?.decode()?;
+    let mut data = img.to_bytes();
 
     let mut message: Vec<u8> = Vec::new();
-    input_file.read_to_end(&mut message).unwrap();
+    File::open(&options.input_file)?.read_to_end(&mut message).unwrap();    
     let bin_bytes = bin_bytes(&message);
 
-    let decoder = Decoder::new(File::open(&options.secret).unwrap());  // Creating the decoder and reader objects 
-    let mut reader = decoder.read_info().unwrap();                           // to read input image data
-    let mut data = vec![0; reader.output_buffer_size()];                         // Creating the input image data buffer
-
-    
-    reader.next_frame(&mut data).unwrap();                                          // Saving the image data as bytes (u8)
-    let info = reader.info();                                                     // Pulling information about image to an object
-
     encode_lsb(&mut data, &bin_bytes);
-    write_lsb(info, &data, options);
+
+    image::save_buffer(
+        &options.output,
+        &data,
+        img.width(),
+        img.height(),
+        img.color()
+    )?;
+
+    Ok(())
 }
 
-pub fn read_data(options: &ReadOptions) {
-    let decoder = Decoder::new(File::open(&options.input_file).unwrap());  // Creating the decoder and reader objects 
-    let mut reader = decoder.read_info().unwrap();                               // to read input image data
-    let mut data = vec![0; reader.output_buffer_size()];                             // Creating the input image data buffer
-    reader.next_frame(&mut data).unwrap();
+
+pub fn read_data(options: &ReadOptions) -> Result<(), Box<dyn Error> > {
+    let img = ImageReader::open(&options.input_file)?.decode()?;
+    let mut data = img.to_bytes();
 
     let mut file_lsb = read_lsb(&mut data);
+    let mut output_file = File::create(&options.output)?;    
+    output_file.write_all(&mut file_lsb)?;
 
-    let mut output_file = File::create(&options.output).unwrap();
-
-    output_file.write_all(&mut file_lsb).unwrap();
+    Ok(())
 }
+
+// fn check_size(message: &Vec<u8>, file: &Vec<u8>) -> std::result::Result<(), &'static str> {
+//     if message.len() * 8 > file.len() {
+//         return Err("Fuck, it's too big");
+//     }
+
+//     Ok(())
+// }
