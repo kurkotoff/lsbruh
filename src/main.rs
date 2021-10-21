@@ -9,11 +9,15 @@ fn main() {
     
     match config.cmd {
         Command::Write(options) => {
-            lsbruh::write_data(&options);
+            if let Err(e) = lsbruh::write_data(&options) {
+                eprintln!("Application error: {}", e);
+            }
         }
 
         Command::Read(options) => {
-            lsbruh::read_data(&options);
+            if let Err(e) = lsbruh::read_data(&options) {
+                eprintln!("Application error: {}", e);
+            }        
         }
     }
 }
