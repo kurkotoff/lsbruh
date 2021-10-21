@@ -161,6 +161,7 @@ pub fn write_data(options: &WriteOptions) -> Result<(), Box<dyn Error> >{
     File::open(&options.input_file)?.read_to_end(&mut message).unwrap();    
     let bin_bytes = bin_bytes(&message);
 
+    check_size(&message, &data)?;
     encode_lsb(&mut data, &bin_bytes);
 
     image::save_buffer(
@@ -186,10 +187,10 @@ pub fn read_data(options: &ReadOptions) -> Result<(), Box<dyn Error> > {
     Ok(())
 }
 
-// fn check_size(message: &Vec<u8>, file: &Vec<u8>) -> std::result::Result<(), &'static str> {
-//     if message.len() * 8 > file.len() {
-//         return Err("Fuck, it's too big");
-//     }
+fn check_size(message: &Vec<u8>, file: &Vec<u8>) -> std::result::Result<(), &'static str> {
+    if message.len() * 8 > file.len() {
+        return Err("The input file is too big for the container");
+    }
 
-//     Ok(())
-// }
+    Ok(())
+}
